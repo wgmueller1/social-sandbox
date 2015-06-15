@@ -5,10 +5,11 @@ var express = require('express'),
        path = require('path'),
           _ = require('underscore')._,
 //    twitter = require('ntwitter'),
-      kafka = require('kafka-node');
+      kafka = require('kafka-node'),
+      moment = require('moment');
 
 var config = {
-  'KAFKA'      : 'localhost:2181',
+  'KAFKA'      : '10.3.2.75:2181',
   'RAW_TOPIC'  : 'throwaway',
   'PROC_TOPIC' : 'instagram_fake'
 }
@@ -29,8 +30,10 @@ var Consumer = kafka.Consumer;
 //   access_token_secret : ''
 // });
 
-var counter = 0;
+var counter = 0, counter2=0,x=0;
 
+var hours=0;
+var ts=[]
 io.sockets.on('connection', function(socket) {
 
   // Forward Kafka -> socket.io
@@ -38,8 +41,24 @@ io.sockets.on('connection', function(socket) {
       try {
         
         if(message.topic == config['RAW_TOPIC']) {
-          counter++;  
-          _([message.value]).flatten()
+          counter++;
+          try{  
+          	timestamp=JSON.parse(message.value)[0].caption.created_time
+          	if(hours==Math.floor((timestamp % 86400) / 1440) + 1 % 24){
+         	 counter2++;
+          	  hours=Math.floor((timestamp % 86400) / 1440) + 1 % 24;
+          	}
+          	else{
+                  ts.push({'x':x,'y':counter2})
+	  	  socket.emit('count',[{'color':"red",'data':ts,'name':"Baltimore"}]);
+ 	  	  counter2=0;
+		  x++;
+          	  hours=Math.floor((timestamp % 86400) / 1440) +1 % 24;
+          	}
+	     } catch(e){
+		console.log('null json',e);
+             }
+	  _([message.value]).flatten()
            .map(function(x) {
               socket.emit('raw', JSON.parse(x));
            });
